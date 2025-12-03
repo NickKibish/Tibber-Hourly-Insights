@@ -1,0 +1,8 @@
+{
+  "name": "Tibber Hourly Insights",
+  "content_in_root": false,
+  "zip_release": false,
+  "filename": "tibber_hourly_insights",
+  "render_readme": true,
+  "homeassistant": "2023.1.0"
+}

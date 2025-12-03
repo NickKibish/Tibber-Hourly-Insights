@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Tibber Hourly Insights",
+        "description": "Enter your Tibber API token to access hourly electricity price data.",
+        "data": {
+          "api_token": "API Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Tibber API",
+      "invalid_auth": "Invalid API token. Please check your token and try again.",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "Tibber integration is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Tibber Hourly Insights",
+        "description": "Adjust weights and settings for the price consensus sensor. Weights will be automatically normalized to sum to 1.0.",
+        "data": {
+          "weight_tibber": "Tibber API Weight",
+          "weight_48h": "48-Hour Comparison Weight",
+          "weight_30d": "30-Day Baseline Weight",
+          "very_cheap_pct": "VERY_CHEAP Percentage",
+          "cheap_pct": "CHEAP Percentage",
+          "normal_pct": "NORMAL Percentage",
+          "expensive_pct": "EXPENSIVE Percentage",
+          "very_expensive_pct": "VERY_EXPENSIVE Percentage",
+          "enable_30d_baseline": "Enable 30-Day Baseline Sensor",
+          "enable_grid_fee": "Enable Grid Fee (Nettleie)",
+          "grid_fee_day": "Day Rate Grid Fee",
+          "grid_fee_night": "Night Rate Grid Fee",
+          "day_start_hour": "Day Rate Start Hour",
+          "day_end_hour": "Day Rate End Hour",
+          "enable_subsidy": "Enable Electricity Subsidy (Strømstøtte)",
+          "subsidy_threshold": "Subsidy Threshold",
+          "subsidy_percentage": "Subsidy Coverage Percentage"
+        },
+        "data_description": {
+          "weight_tibber": "Weight for Tibber's API price level classification (0.0-1.0)",
+          "weight_48h": "Weight for 48-hour price comparison (0.0-1.0)",
+          "weight_30d": "Weight for 30-day historical baseline (0.0-1.0)",
+          "very_cheap_pct": "Percentage value for VERY_CHEAP price level",
+          "cheap_pct": "Percentage value for CHEAP price level",
+          "normal_pct": "Percentage value for NORMAL price level (typically 0%)",
+          "expensive_pct": "Percentage value for EXPENSIVE price level",
+          "very_expensive_pct": "Percentage value for VERY_EXPENSIVE price level",
+          "enable_30d_baseline": "WARNING: Queries recorder database hourly, may impact performance on low-end devices",
+          "enable_grid_fee": "Add time-based grid fees to all price calculations. Subsidy is applied first, then grid fee is added.",
+          "grid_fee_day": "Grid tariff during day hours (NOK/kWh). Norwegian standard: 0.444 NOK.",
+          "grid_fee_night": "Grid tariff during night hours (NOK/kWh). Norwegian standard: 0.305 NOK.",
+          "day_start_hour": "Hour when day rate begins (0-23). Standard: 6 (06:00).",
+          "day_end_hour": "Hour when day rate ends (0-23). Standard: 22 (22:00).",
+          "enable_subsidy": "Apply Norwegian electricity subsidy (Strømstøtte). Government covers 90% of price above threshold.",
+          "subsidy_threshold": "Price threshold for subsidy (NOK/kWh). Standard: 0.9375 NOK (93.75 øre/kWh).",
+          "subsidy_percentage": "Percentage of excess price covered by government. Standard: 90%."
+        }
+      }
+    }
+  }
+}

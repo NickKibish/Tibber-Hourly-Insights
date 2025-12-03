@@ -1,0 +1,12 @@
+{
+  "domain": "tibber_hourly_insights",
+  "name": "Tibber Hourly Insights",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/your-username/Tibber-Hourly-Insights",
+  "issue_tracker": "https://github.com/your-username/Tibber-Hourly-Insights/issues",
+  "iot_class": "cloud_polling",
+  "requirements": ["aiohttp>=3.8.0", "pytz>=2024.1"],
+  "version": "0.2.0"
+}
