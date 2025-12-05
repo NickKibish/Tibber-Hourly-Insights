@@ -19,9 +19,6 @@
     }
   },
   "options": {
-    "error": {
-      "schema_error": "Configuration schema error - check logs for details"
-    },
     "step": {
       "init": {
         "title": "Configure Tibber Hourly Insights",
