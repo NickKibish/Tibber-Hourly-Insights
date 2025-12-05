@@ -143,6 +143,82 @@ class TibberApiClient:
             _LOGGER.error("Failed to parse Tibber API response: %s", err)
             raise TibberApiError(f"Failed to parse response: {err}") from err
 
+    async def get_historical_consumption(
+        self, resolution: str = "HOURLY", last: int = 720
+    ) -> list[dict[str, Any]]:
+        """Get historical consumption data with prices from Tibber API.
+
+        This retrieves past consumption and pricing data, useful for filling gaps
+        when Home Assistant's recorder doesn't have sufficient historical data.
+
+        Args:
+            resolution: Time resolution - HOURLY, DAILY, WEEKLY, MONTHLY, ANNUAL
+            last: Number of records to fetch (e.g., 720 = 30 days of hourly data)
+
+        Returns:
+            List of consumption nodes, each containing:
+                - from: ISO timestamp for period start
+                - to: ISO timestamp for period end
+                - unitPrice: Price per kWh (excluding VAT)
+                - unitPriceVAT: VAT amount per kWh
+                - cost: Total cost for the period
+                - consumption: kWh consumed in the period
+
+        Raises:
+            TibberApiError: If API request fails or response is invalid
+        """
+        # Cap the request to prevent huge API calls
+        last = min(last, 1000)  # Tibber API limit
+
+        query = f"""
+        {{
+            viewer {{
+                homes {{
+                    consumption(resolution: {resolution}, last: {last}) {{
+                        nodes {{
+                            from
+                            to
+                            unitPrice
+                            unitPriceVAT
+                            cost
+                            consumption
+                        }}
+                    }}
+                }}
+            }}
+        }}
+        """
+
+        try:
+            data = await self._query(query)
+
+            homes = data.get("viewer", {}).get("homes", [])
+            if not homes:
+                raise TibberApiError("No homes found in Tibber account")
+
+            # Get the first home
+            home = homes[0]
+            consumption_data = home.get("consumption", {})
+
+            if not consumption_data:
+                _LOGGER.warning("No consumption data available from Tibber API")
+                return []
+
+            nodes = consumption_data.get("nodes", [])
+
+            _LOGGER.debug(
+                "Fetched %d consumption nodes from Tibber API (resolution: %s, last: %d)",
+                len(nodes),
+                resolution,
+                last,
+            )
+
+            return nodes
+
+        except (KeyError, IndexError) as err:
+            _LOGGER.error("Failed to parse Tibber consumption API response: %s", err)
+            raise TibberApiError(f"Failed to parse consumption response: {err}") from err
+
 
 class TibberApiError(Exception):
     """Exception raised for Tibber API errors."""

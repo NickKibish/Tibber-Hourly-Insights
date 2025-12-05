@@ -41,7 +41,10 @@ from .const import (
     ATTR_WEIGHTS_USED,
     CONF_CHEAP_PCT,
     CONF_ENABLE_30D_BASELINE,
+    CONF_ENABLE_TIBBER_FALLBACK,
     CONF_EXPENSIVE_PCT,
+    CONF_FALLBACK_MAX_FETCH_HOURS,
+    CONF_FALLBACK_MIN_SAMPLES,
     CONF_NORMAL_PCT,
     CONF_VERY_CHEAP_PCT,
     CONF_VERY_EXPENSIVE_PCT,
@@ -50,7 +53,10 @@ from .const import (
     CONF_WEIGHT_TIBBER,
     DEFAULT_CHEAP_PCT,
     DEFAULT_ENABLE_30D_BASELINE,
+    DEFAULT_ENABLE_TIBBER_FALLBACK,
     DEFAULT_EXPENSIVE_PCT,
+    DEFAULT_FALLBACK_MAX_FETCH_HOURS,
+    DEFAULT_FALLBACK_MIN_SAMPLES,
     DEFAULT_NORMAL_PCT,
     DEFAULT_VERY_CHEAP_PCT,
     DEFAULT_VERY_EXPENSIVE_PCT,
@@ -418,12 +424,33 @@ class Tibber30DayBaselineSensor(CoordinatorEntity[TibberDataUpdateCoordinator], 
         await self._update_baseline()
 
     async def _update_baseline(self) -> None:
-        """Update the 30-day baseline data."""
+        """Update the 30-day baseline data with optional Tibber API fallback."""
         if self._history_helper is None:
             return
 
+        # Get fallback configuration from options
+        options = self._entry.options
+        enable_fallback = options.get(
+            CONF_ENABLE_TIBBER_FALLBACK, DEFAULT_ENABLE_TIBBER_FALLBACK
+        )
+        min_samples = options.get(
+            CONF_FALLBACK_MIN_SAMPLES, DEFAULT_FALLBACK_MIN_SAMPLES
+        )
+        max_fetch_hours = options.get(
+            CONF_FALLBACK_MAX_FETCH_HOURS, DEFAULT_FALLBACK_MAX_FETCH_HOURS
+        )
+
+        # Get Tibber client from coordinator if fallback is enabled
+        tibber_client = self.coordinator.client if enable_fallback else None
+
         try:
-            self._baseline_data = await self._history_helper.get_same_hour_average(days=30)
+            self._baseline_data = await self._history_helper.get_same_hour_average(
+                days=30,
+                tibber_client=tibber_client,
+                enable_fallback=enable_fallback,
+                min_samples=min_samples,
+                max_fetch_hours=max_fetch_hours,
+            )
         except Exception as err:
             _LOGGER.error("Error updating 30-day baseline: %s", err)
             self._baseline_data = None
@@ -470,6 +497,7 @@ class Tibber30DayBaselineSensor(CoordinatorEntity[TibberDataUpdateCoordinator], 
         if self._baseline_data:
             baseline_price = self._baseline_data.get("average")
             sample_count = self._baseline_data.get("sample_count", 0)
+            data_source = self._baseline_data.get("source", "recorder")
 
             if baseline_price is not None:
                 diff_percent = ((current_price - baseline_price) / baseline_price) * 100
@@ -479,7 +507,13 @@ class Tibber30DayBaselineSensor(CoordinatorEntity[TibberDataUpdateCoordinator], 
                     ATTR_COMPARISON: self._get_comparison_text(diff_percent),
                     ATTR_DIFFERENCE_PERCENT: round(diff_percent, 1),
                     ATTR_SAMPLE_COUNT: sample_count,
+                    ATTR_DATA_SOURCE: data_source,
                 })
+
+                # Add breakdown for mixed sources
+                if data_source == "mixed":
+                    attrs["recorder_samples"] = self._baseline_data.get("recorder_count", 0)
+                    attrs["tibber_samples"] = self._baseline_data.get("tibber_count", 0)
 
         return attrs
 

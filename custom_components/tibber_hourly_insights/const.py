@@ -38,6 +38,16 @@ DEFAULT_WEIGHT_48H = 0.3
 DEFAULT_WEIGHT_30D = 0.2
 DEFAULT_ENABLE_30D_BASELINE = False  # Disabled by default for performance
 
+# 30-day baseline Tibber API fallback configuration
+CONF_ENABLE_TIBBER_FALLBACK = "enable_tibber_fallback"
+CONF_FALLBACK_MIN_SAMPLES = "fallback_min_samples"
+CONF_FALLBACK_MAX_FETCH_HOURS = "fallback_max_fetch_hours"
+
+# Default fallback values
+DEFAULT_ENABLE_TIBBER_FALLBACK = True  # Enable fallback by default
+DEFAULT_FALLBACK_MIN_SAMPLES = 20  # Require 20 samples before using recorder only
+DEFAULT_FALLBACK_MAX_FETCH_HOURS = 720  # Max 30 days of hourly data (30*24)
+
 # Default Tibber enum mapping (Symmetric)
 DEFAULT_VERY_CHEAP_PCT = -40.0
 DEFAULT_CHEAP_PCT = -20.0
