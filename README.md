@@ -6,17 +6,20 @@ Home Assistant integration that provides hourly electricity price data from Tibb
 
 ## Features
 
-- ⚡ **Current Price Monitoring**: Track current electricity prices in real-time
-- 🔄 **Hourly Updates**: Automatic updates every hour to reflect latest pricing
-- 📊 **Price Level Indicators**: Get Tibber's native price level classification
-- 📈 **48-Hour Price Comparison**: See how current price ranks against today+tomorrow prices
-- 📉 **30-Day Historical Baseline**: Compare current price to 30-day average for same hour
+- ⚡ **Current Price Monitoring**: Track prices in real-time (optionally adjusted for Norwegian subsidy/grid fees)
+- 🔄 **Hourly Refresh**: Updates follow the official Tibber price entity (`sensor.home_electricity_price`)
+- 📊 **Price Level Indicators**: Tibber's native level classification with configurable thresholds
+- 📈 **48-Hour Price Comparison**: Percentile ranking vs. today+tomorrow (or yesterday+today) prices
+- 🧮 **30-Day Historical Baseline (optional)**: Recorder- and Tibber-API-backed baseline for the current hour
+- 🎛️ **Price Consensus Score**: Weighted blend of Tibber level, 48h comparison, and 30d baseline
 - 🌍 **Multi-Currency Support**: Works with NOK, SEK, EUR, and other currencies
 - ⚙️ **Easy Setup**: Simple configuration via Home Assistant UI
 
 ## Requirements
 
+- Official Tibber integration installed and configured (provides `sensor.home_electricity_price` for hourly refreshes)
 - Home Assistant 2023.1 or later
+- Home Assistant Recorder enabled (required for the 30-day baseline)
 - Tibber account with active subscription
 - Tibber API token (get it from [developer.tibber.com](https://developer.tibber.com))
 
@@ -50,11 +53,19 @@ Home Assistant integration that provides hourly electricity price data from Tibb
 3. Enter your Tibber API token
 4. Click Submit
 
-The integration will validate your token and set up the sensors.
+The integration will validate your token and set up the sensors. Keep the official Tibber integration enabled so price updates continue to trigger every hour.
+
+### Options (after setup)
+
+Use the **Configure** button on the integration to adjust:
+- Weights for the price consensus sensor (Tibber level / 48h / 30d). Weights auto-normalize.
+- Percentage mapping for Tibber levels (VERY_CHEAP → VERY_EXPENSIVE) to your own thresholds.
+- Enable/disable the **30-Day Baseline** sensor (off by default; queries Recorder hourly).
+- Norwegian-specific adjustments: electricity subsidy (Strømstøtte) and grid fees (Nettleie), including day/night rates and hours. When enabled, all sensors use adjusted prices and expose raw spot price + adjustment breakdown.
 
 ## Entities Created
 
-The integration creates four sensors to help you understand electricity pricing:
+The integration creates these sensors:
 
 ### 1. Current Price
 - **Entity ID**: `sensor.tibber_current_price`
@@ -67,6 +78,7 @@ The integration creates four sensors to help you understand electricity pricing:
 **Attributes**:
 - `currency`: Currency code (e.g., NOK, SEK, EUR)
 - `price_level`: Tibber's price level (VERY_CHEAP, CHEAP, NORMAL, EXPENSIVE, VERY_EXPENSIVE)
+- When price adjustments are enabled: `raw_spot_price`, `subsidy_amount`, `grid_fee`
 
 ### 2. API Price Level
 - **Entity ID**: `sensor.tibber_api_price_level`
@@ -93,7 +105,8 @@ The integration creates four sensors to help you understand electricity pricing:
 
 **Attributes**:
 - `price_category`: `cheap` (0-33%), `normal` (33-66%), or `expensive` (66-100%)
-- `percentile`: Numeric percentile ranking
+- `percentile`: Numeric percentile ranking (one decimal)
+- `pct_vs_average_48h`: % difference vs. the 48h average
 - `current_price`: Current price value
 - `min_price_48h`: Minimum price in 48h window
 - `max_price_48h`: Maximum price in 48h window
@@ -101,16 +114,30 @@ The integration creates four sensors to help you understand electricity pricing:
 - `data_source`: `today+tomorrow` or `yesterday+today`
 - `currency`: Currency code
 
-### 4. 30-Day Baseline Comparison
+### 4. Price Consensus (Weighted)
+- **Entity ID**: `sensor.tibber_price_consensus`
+- **Description**: Weighted score that blends Tibber's price level, 48h % vs. average, and (if enabled) 30d % vs. baseline
+- **State**: Decimal percentage (e.g., `0.18` = 18% more expensive; `-0.12` = 12% cheaper)
+- **Update Frequency**: Every hour
+
+**Attributes**:
+- `tibber_contribution`, `48h_contribution`, `30d_contribution`: Percentage inputs before weighting
+- `weights_used`: Normalized weights actually applied based on available inputs
+- `available_inputs`: Inputs present for this calculation
+- `score_description`: Human-readable summary of the score
+- `current_price`, `currency`
+
+### 5. 30-Day Baseline Comparison (optional)
 - **Entity ID**: `sensor.tibber_30d_baseline_comparison`
 - **Description**: Percentage difference from 30-day historical average for same hour
-- **State**: Percentage difference (e.g., "+15.3%" or "-8.2%")
-- **Update Frequency**: Every hour
+- **State**: Percentage difference string (e.g., "+15.3%" or "-8.2%")
+- **Update Frequency**: Every hour (Recorder query + optional Tibber API fallback)
+- **Enablement**: Disabled by default. Turn on in Options if you want this sensor.
 
 **How it works**:
 - Calculates average price for current hour over last 30 days
+- Uses Home Assistant Recorder data; will fetch missing samples from Tibber's consumption API when Recorder is sparse
 - Compares current price to this baseline
-- Requires historical data (accuracy improves over time)
 
 **Attributes**:
 - `current_price`: Current price value
@@ -118,6 +145,8 @@ The integration creates four sensors to help you understand electricity pricing:
 - `comparison`: `cheaper`, `similar`, or `more expensive`
 - `difference_percent`: Numeric percentage difference
 - `sample_count`: Number of historical data points used
+- `data_source`: `recorder`, `tibber`, or `mixed`
+- When mixed: `recorder_samples`, `tibber_samples`
 - `currency`: Currency code
 
 ## Usage Examples
@@ -132,6 +161,8 @@ entities:
     name: Current Price
   - entity: sensor.tibber_api_price_level
     name: Tibber Price Level
+  - entity: sensor.tibber_price_consensus
+    name: Price Consensus
   - entity: sensor.tibber_48h_price_comparison
     name: 48h Comparison
   - entity: sensor.tibber_30d_baseline_comparison
@@ -219,6 +250,7 @@ automation:
 
 ### Sensors Not Updating
 - Check Home Assistant logs for errors
+- Ensure the official Tibber price entity `sensor.home_electricity_price` exists and updates hourly (this triggers refreshes)
 - Verify internet connectivity to Tibber API
 - Integration updates hourly - wait for next update cycle
 - Try reloading the integration from Settings → Devices & Services
